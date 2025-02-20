@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  api-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    ports:
+      - "8001:8000"  # Porta diferente para não conflitar com desenvolvimento
+    environment:
+      - ENVIRONMENT=test
+      - POSTGRES_SERVER=db-test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=test_whatsapp_sales
+      - REDIS_URL=redis://redis-test:6379/0
+      - REDIS_PASSWORD=redis
+    depends_on:
+      - db-test
+      - redis-test
+    networks:
+      - test-network
+    volumes:
+      - ./backend:/app
+      - ./backend/tests:/app/tests
+
+  db-test:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=test_whatsapp_sales
+    ports:
+      - "5433:5432"  # Porta diferente para não conflitar com desenvolvimento
+    networks:
+      - test-network
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+  redis-test:
+    image: redis:7-alpine
+    command: redis-server --requirepass redis
+    ports:
+      - "6380:6379"  # Porta diferente para não conflitar com desenvolvimento
+    networks:
+      - test-network
+    volumes:
+      - redis_test_data:/data
+
+  test-runner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    environment:
+      - ENVIRONMENT=test
+      - POSTGRES_SERVER=db-test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=test_whatsapp_sales
+      - REDIS_URL=redis://redis-test:6379/0
+      - REDIS_PASSWORD=redis
+    depends_on:
+      - db-test
+      - redis-test
+    networks:
+      - test-network
+    volumes:
+      - ./backend:/app
+      - ./backend/tests:/app/tests
+    command: pytest -v --cov=app tests/
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  postgres_test_data:
+  redis_test_data: 
